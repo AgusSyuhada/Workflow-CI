@@ -25,13 +25,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mlruns-artifacts
-          path: MLProject/mlruns
+          path: mlruns
 
       - name: Build Docker image from trained model
         run: |
-          MODEL_DIR=$(find MLProject/mlruns -type d -name "model" | head -1)
+          MODEL_DIR=$(find mlruns -type d -name "model" | head -1)
           echo "Model dir: $MODEL_DIR"
-          mlflow build-docker -m "$MODEL_DIR" -n "${{ secrets.DOCKER_USERNAME }}/smsml-heartdisease:latest" --enable-mlserver
+          mlflow models build-docker -m "$MODEL_DIR" -n "${{ secrets.DOCKER_USERNAME }}/smsml-heartdisease:latest" --enable-mlserver
 
       - name: Push image to Docker Hub
         run: |
