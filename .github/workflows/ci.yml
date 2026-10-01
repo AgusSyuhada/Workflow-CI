@@ -43,7 +43,9 @@ jobs:
           yaml.safe_dump(m, open(p, 'w'))
           print('patched MLmodel env:', m['flavors']['python_function']['env'])
           "
-          mlflow models build-docker -m "$MODEL_DIR" -n "${{ secrets.DOCKER_USERNAME }}/smsml-heartdisease:latest"
+          # --env-manager local: install dependensi model via pip langsung di image.
+          # Base image python:3.12.7-slim berasal dari python_env.yaml yang dipatch di atas.
+          mlflow models build-docker -m "$MODEL_DIR" --env-manager local -n "${{ secrets.DOCKER_USERNAME }}/smsml-heartdisease:latest"
 
       - name: Push image to Docker Hub
         run: |
