@@ -16,7 +16,7 @@ jobs:
           python-version: "3.12.7"
 
       - name: Install dependencies
-        run: pip install "mlflow==2.19.0" pandas scikit-learn
+        run: pip install "mlflow==2.19.0" pandas==2.2.3 scikit-learn==1.6.1
 
       - name: Train via MLflow Project
         run: mlflow run MLProject --experiment-name HeartDisease-CI --env-manager=local
@@ -31,6 +31,18 @@ jobs:
         run: |
           MODEL_DIR=$(find mlruns -type d -name "model" | head -1)
           echo "Model dir: $MODEL_DIR"
+          # Jamin template python-slim: mlflow 2.19 fallback ke template pyenv
+          # (python3.9 + get-pip.py rusak) bila python_env.yaml/virtualenv hilang.
+          PYVER=$(python -c "import platform; print(platform.python_version())")
+          printf 'python: "%s"\nbuild_dependencies:\n  - pip\ndependencies:\n  - mlflow==2.19.0\n  - pandas==2.2.3\n  - scikit-learn==1.6.1\n' "$PYVER" > "$MODEL_DIR/python_env.yaml"
+          MODEL_DIR="$MODEL_DIR" python -c "
+          import os, yaml
+          p = os.path.join(os.environ['MODEL_DIR'], 'MLmodel')
+          m = yaml.safe_load(open(p))
+          m['flavors']['python_function']['env']['virtualenv'] = 'python_env.yaml'
+          yaml.safe_dump(m, open(p, 'w'))
+          print('patched MLmodel env:', m['flavors']['python_function']['env'])
+          "
           mlflow models build-docker -m "$MODEL_DIR" -n "${{ secrets.DOCKER_USERNAME }}/smsml-heartdisease:latest"
 
       - name: Push image to Docker Hub
