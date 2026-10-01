@@ -1,0 +1,39 @@
+name: CI-MLflow
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  train-build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.7"
+
+      - name: Install dependencies
+        run: pip install "mlflow==2.19.0" pandas scikit-learn
+
+      - name: Train via MLflow Project
+        run: mlflow run MLProject --experiment-name HeartDisease-CI --env-manager=local
+
+      - name: Upload model artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlruns-artifacts
+          path: MLProject/mlruns
+
+      - name: Build Docker image from trained model
+        run: |
+          MODEL_DIR=$(find MLProject/mlruns -type d -name "model" | head -1)
+          echo "Model dir: $MODEL_DIR"
+          mlflow build-docker -m "$MODEL_DIR" -n "${{ secrets.DOCKER_USERNAME }}/smsml-heartdisease:latest" --enable-mlserver
+
+      - name: Push image to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker push "${{ secrets.DOCKER_USERNAME }}/smsml-heartdisease:latest"
